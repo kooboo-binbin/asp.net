@@ -1,4 +1,2 @@
-asp.net
-=======
-
-ASP.NET sample code using VB.NET and C#
+Adyen ASP.NET Integration (C#)
+==============
