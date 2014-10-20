@@ -1,0 +1,126 @@
+﻿@using System.Net.Http;
+
+@*
+    * Create Recurring Payment (HTTP Post)
+    *
+    * You can submit a recurring payment using a specific recurringDetails record or by using the last created
+    * recurringDetails record. The request for the recurring payment is done using a paymentRequest. This file shows how a
+    * recurring payment can be submitted using our HTTP Post API.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /5.Recurring/HttpPost/CreateRecurringPayment.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * HTTP Post settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/adapter/httppost";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create HTTP Client (using Microsoft.Net.Http library) and set up Basic Authentication
+     */
+    var httpClientHandler = new HttpClientHandler();
+    httpClientHandler.Credentials = new NetworkCredential(wsUser, wsPassword);
+    var httpClient = new HttpClient(httpClientHandler);
+
+    /**
+     * A recurring payment can be submitted with a HTTP Post request to the API, containing the following variables:
+     * 
+     * - action               : Payment.authorise
+     * - paymentRequest
+     *   - selectedRecurringDetailReference : The recurringDetailReference you want to use for this payment.
+     *                          The value LATEST can be used to select the most recently used recurring detail.
+     *   - recurring
+     *       - contract       : This should be the same value as recurringContract in the payment where the recurring
+     *                          contract was created. However if ONECLICK,RECURRING was specified initially then this
+     *                          field can be either ONECLICK or RECURRING.
+     *   - shopperInteraction : Set to ContAuth if the contract value is RECURRING, or Ecommerce if the contract
+     *                          value is ONECLICK.
+     * 
+     *   - merchantAccount    : The merchant account for which you want to process the payment.
+     *   - amount
+     *       - currency       : The three character ISO currency code.
+     *       - value          : The transaction amount in minor units (e.g. EUR 1,00 = 100).
+     *   - reference          : Your reference for this payment.
+     *   - shopperEmail       : The email address of the shopper. This does not have to match the email address
+     *                          supplied with the initial payment since it may have changed in the mean time.
+     *   - shopperReference   : The reference to the shopper. This shopperReference must be the same as the
+     *                          shopperReference used in the initial payment.
+     *   - shopperIP          : The shopper's IP address. (recommended)
+     *   - fraudOffset        : An integer that is added to the normal fraud score. (optional)
+     *   - card
+     *       - CVC            : The card validation code. (only required for OneClick card payments)
+     */
+    var values = new List<KeyValuePair<string, string>>
+    {
+        new KeyValuePair<string, string>("action", "Payment.authorise"),
+
+        new KeyValuePair<string, string>("paymentRequest.merchantAccount", "YourMerchantAccount"),
+        new KeyValuePair<string, string>("paymentRequest.reference", "TEST-PAYMENT-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss")),
+        new KeyValuePair<string, string>("paymentRequest.shopperIP", "123.123.123.123"),
+        new KeyValuePair<string, string>("paymentRequest.shopperEmail", "test@example.com"),
+        new KeyValuePair<string, string>("paymentRequest.shopperReference", "TheShopperReference"),
+        new KeyValuePair<string, string>("paymentRequest.fraudOffset", "0"),
+
+        new KeyValuePair<string, string>("paymentRequest.selectedRecurringDetailReference", "LATEST"),
+        new KeyValuePair<string, string>("paymentRequest.recurring.contract", "ONECLICK"),
+        new KeyValuePair<string, string>("paymentRequest.shopperInteraction", "Ecommerce"),
+
+        new KeyValuePair<string, string>("paymentRequest.amount.currency", "EUR"),
+        new KeyValuePair<string, string>("paymentRequest.amount.value", "199"),
+        
+        // CVC is only required for OneClick card payments
+        new KeyValuePair<string, string>("paymentRequest.card.cvc", "737")
+    };
+
+    /**
+     * Send the HTTP Post request with the specified variables.
+     */
+    HttpResponseMessage response = httpClient.PostAsync(apiUrl, new FormUrlEncodedContent(values)).Result;
+    string responseString = response.Content.ReadAsStringAsync().Result;
+
+    /**
+     * Keep in mind that you should handle errors correctly.
+     * If the Adyen platform does not accept or store a submitted request, you will receive a HTTP response with
+     * status code 500 Internal Server Error. The fault string can be found in the responseString.
+     */
+    if (!response.IsSuccessStatusCode)
+    {
+        if (response.StatusCode == HttpStatusCode.InternalServerError)
+        {
+            throw new HttpException((int)response.StatusCode, responseString);
+        }
+        else
+        {
+            throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+        }
+    }
+
+    /**
+     * If the recurring payment passes validation a risk analysis will be done and, depending on the outcome, an
+     * authorisation will be attempted. You receive a payment response with the following fields:
+     * 
+     * - pspReference    : Adyen's unique reference that is associated with the payment.
+     * - resultCode      : The result of the payment. Possible values: Authorised, Refused, Error or Received.
+     * - authCode        : The authorisation code if the payment was successful. Blank otherwise.
+     * - refusalReason   : Adyen's mapped refusal reason, populated if the payment was refused.
+     */
+    var paymentResult = HttpUtility.ParseQueryString(responseString);
+
+    <p><strong>Payment Result</strong></p>
+    <ul>
+        <li>pspReference: @paymentResult.Get("paymentResult.pspReference")</li>
+        <li>resultCode: @paymentResult.Get("paymentResult.resultCode")</li>
+        <li>authCode: @paymentResult.Get("paymentResult.authCode")</li>
+        <li>refusalReason: @paymentResult.Get("paymentResult.refusalReason")</li>
+    </ul>
+}

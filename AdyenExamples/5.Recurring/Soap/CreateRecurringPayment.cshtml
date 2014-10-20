@@ -1,0 +1,121 @@
+﻿@using Adyen.Services.Payment
+@using System.ServiceModel
+
+@*
+    * Create Recurring Payment (SOAP)
+    *
+    * You can submit a recurring payment using a specific recurringDetails record or by using the last created
+    * recurringDetails record. The request for the recurring payment is done using a paymentRequest. This file shows how a
+    * recurring payment can be submitted using our SOAP API.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /5.Recurring/Soap/CreateRecurringPayment.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Payment";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    PaymentPortTypeClient client = new PaymentPortTypeClient("PaymentHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * Submitting a recurring payment is done by calling the authorise action on the Payment service with a
+     * paymentRequest. The following fields should be present in the payment request:
+     * 
+     * - selectedRecurringDetailReference : The recurringDetailReference you want to use for this payment. The value
+     *                                      LATEST can be used to select the most recently used recurring detail.
+     * - recurring
+     *     - contract       : This should be the same value as recurringContract in the payment where the recurring
+     *                        contract was created. However if ONECLICK,RECURRING was specified initially then this
+     *                        field can be either ONECLICK or RECURRING.
+     * - shopperInteraction : Set to ContAuth if the contract value is RECURRING, or Ecommerce if the contract
+     *                        value is ONECLICK.
+     * 
+     * - merchantAccount    : The merchant account for which you want to process the payment.
+     * - amount
+     *     - currency       : The three character ISO currency code.
+     *     - value          : The transaction amount in minor units (e.g. EUR 1,00 = 100).
+     * - reference          : Your reference for this payment.
+     * - shopperEmail       : The email address of the shopper. This does not have to match the email address
+     *                        supplied with the initial payment since it may have changed in the mean time.
+     * - shopperReference   : The reference to the shopper. This shopperReference must be the same as the
+     *                        shopperReference used in the initial payment.
+     * - shopperIP          : The shopper's IP address. (recommended)
+     * - fraudOffset        : An integer that is added to the normal fraud score. (optional)
+     * - card
+     *     - CVC            : The card validation code. (only required for OneClick card payments)
+     */
+
+    // Create new payment request
+    PaymentRequest paymentRequest = new PaymentRequest();
+    paymentRequest.merchantAccount = "YourMerchantAccount";
+    paymentRequest.reference = "TEST-PAYMENT-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss");
+    paymentRequest.shopperIP = "123.123.123.123";
+    paymentRequest.shopperEmail = "test@example.com";
+    paymentRequest.shopperReference = "TheShopperReference";
+    paymentRequest.fraudOffset = 0;
+    
+    // Set amount
+    Amount amount = new Amount();
+    amount.currency = "EUR";
+    amount.value = 199;
+    paymentRequest.amount = amount;
+
+    // Set recurring contract
+    paymentRequest.selectedRecurringDetailReference = "LATEST";
+    paymentRequest.shopperInteraction = "Ecommerce";
+
+    Recurring recurring = new Recurring();
+    recurring.contract = "ONECLICK";
+    paymentRequest.recurring = recurring;
+
+    // CVC is only required for OneClick card payments (all other card fields must be empty)
+    Card card = new Card();
+    card.expiryMonth = "";
+    card.expiryYear = "";
+    card.holderName = "";
+    card.number = "";
+    card.cvc = "737";
+    paymentRequest.card = card;
+    
+    /**
+     * Send the authorise request.
+     */
+    PaymentResult paymentResult = client.authorise(paymentRequest);
+
+    /**
+     * If the recurring payment passes validation a risk analysis will be done and, depending on the outcome, an
+     * authorisation will be attempted. You receive a payment response with the following fields:
+     * 
+     * - pspReference    : Adyen's unique reference that is associated with the payment.
+     * - resultCode      : The result of the payment. Possible values: Authorised, Refused, Error or Received.
+     * - authCode        : The authorisation code if the payment was successful. Blank otherwise.
+     * - refusalReason   : Adyen's mapped refusal reason, populated if the payment was refused.
+     */
+    <p><strong>Payment Result</strong></p>
+    <ul>
+        <li>pspReference: @paymentResult.pspReference</li>
+        <li>resultCode: @paymentResult.resultCode</li>
+        <li>authCode: @paymentResult.authCode</li>
+        <li>refusalReason: @paymentResult.refusalReason</li>
+    </ul>
+}
