@@ -1,0 +1,120 @@
+﻿@using Adyen.Services.Payout
+@using System.ServiceModel
+
+@*
+    * Store and Submit Payout (SOAP)
+    *
+    * You can also decide to both store the details and make a Payout request in a single webservice call. This is done by
+    * adding the amount field and using the storeDetailAndSubmit method instead of the storeDetail method. This example
+    * shows how to perform such a request (in this case with a bank account) using SOAP.
+    *
+    * Please note: the Payout functionality is set up as a 2-step process. Because of this there are two additional
+    * Webservice User accounts needed to use the Payout process. Please request the Payout permission for a specific user
+    * account with Adyen Support. The password can be set in Adyen CA >> Settings >> Users.
+    *
+    * @link /9.Payout/Soap/StorePayoutDetailsAndSubmit.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl  URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user to store Payout details, and to initiate a Payout
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Payout";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    PayoutPortTypeClient client = new PayoutPortTypeClient("PayoutHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * To submit the payout details and make a payout request, call the storeDetailAndSubmit action on the Payout
+     * Service. The storeDetailAndSubmit request has the following fields:
+     * 
+     * - recurring
+     *     - contract       : The contract value of the recurring object should be present and contain value PAYOUT.
+     * - merchantAccount    : The merchant account you want to process this payout with.
+     * - amount
+     *     - currencyCode   : The three character ISO currency code.
+     *     - value          : The payout amount in minor units (e.g. EUR 1,00 = 100).
+     * - reference          : The (merchant) reference for this payout. This reference will be used in all
+     *                        communication to the merchant about the status of the payout and the created payment
+     *                        (after confirmation of the payout).
+     *                        Although it is a good idea to make sure it is unique, this is not a requirement.
+     * - shopperEmail       : The email address of the shopper.
+     * - shopperReference   : The reference to the shopper. This value identifies an unique shopper. Therefore you
+     *                        have to make sure that this value is different for multiple shoppers.
+     * - shopperStatement   : The description of this payout. This description is shown on the bank statement of
+     *                        the shopper (if this is supported by the chosen payment method, optional).
+     * - fraudOffset        : A integer that is added to normal fraud score, either positive or negative (optional).
+     * - bank
+     *     - iban           : The complete IBAN number of the shopper.
+     *     - bic            : The associated bic number of the bank.
+     *     - bankName       : The name of the bank from the shopper.
+     *     - countryCode    : The country code of where the bank of the shopper is based.
+     *     - ownerName      : The name which is used to register the bank account number.
+     */
+
+    // Create new store details and submit request
+    StoreDetailAndSubmitRequest payoutRequest = new StoreDetailAndSubmitRequest();
+    payoutRequest.merchantAccount = "YourMerchantAccount";
+    payoutRequest.reference = "TEST-PAYOUT-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss");
+    payoutRequest.shopperEmail = "test@shopper.com";
+    payoutRequest.shopperReference = "ShopperReference";
+    payoutRequest.shopperStatement = "ShopperStatement";
+    payoutRequest.fraudOffset = 0;
+
+    // Set recurring contract
+    Recurring recurring = new Recurring();
+    recurring.contract = "PAYOUT";
+    payoutRequest.recurring = recurring;
+
+    // Set bank account
+    BankAccount bankAccount = new BankAccount();
+    bankAccount.iban = "NL13TEST0123456789";
+    bankAccount.bic = "TESTNL01";
+    bankAccount.bankName = "TestBank";
+    bankAccount.countryCode = "NL";
+    bankAccount.ownerName = "Test Shopper";
+    payoutRequest.bank = bankAccount;
+
+    // Set amount
+    Amount amount = new Amount();
+    amount.currency = "EUR";
+    amount.value = 1000;
+    payoutRequest.amount = amount;
+
+    /**
+     * Send the store details and submit request.
+     */
+    StoreDetailAndSubmitResponse storeDetailsAndSubmitResult = client.storeDetailAndSubmit(payoutRequest);
+
+    /**
+     * If the message is syntactically valid and merchantAccount is correct you will receive a
+     * storeDetailsAndSubmitResponse with the following fields:
+     * 
+     * - pspReference      : A new reference to uniquely identify this Payout request.
+     * - resultCode        : In case of success, this will be [payout-submit-received] or, in case of an error,
+     *                       an informational message will be returned.
+     * - refusalReason     : In case of refusal, an informational message for the reason.
+     * 
+     * You should not expect to receive a Notification at this time as it has not yet been confirmed.
+     */
+    <p><strong>Store Details and Submit Result</strong></p>
+    <ul>
+        <li>pspReference: @storeDetailsAndSubmitResult.pspReference</li>
+        <li>resultCode: @storeDetailsAndSubmitResult.resultCode</li>
+        <li>refusalReason: @storeDetailsAndSubmitResult.refusalReason</li>
+    </ul>
+}
