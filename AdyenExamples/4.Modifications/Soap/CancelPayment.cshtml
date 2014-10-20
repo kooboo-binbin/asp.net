@@ -1,0 +1,70 @@
+﻿@using Adyen.Services.Payment
+@using System.ServiceModel
+
+@*
+    * Cancel a Payment (SOAP)
+    *
+    * In order to cancel an authorised (card) payment you send a modification request to the cancel action. This file shows
+    * how an authorised payment should be canceled by sending a modification request using SOAP.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /4.Modifications/Soap/CancelPayment.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Payment";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    PaymentPortTypeClient client = new PaymentPortTypeClient("PaymentHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * Perform cancel request by sending in a modificationRequest, the protocol is defined in the WSDL.
+     * The following parameters are used:
+     * 
+     * - merchantAccount        : The merchant account used to process the payment.
+     * - originalReference      : The pspReference that was assigned to the authorisation.
+     * - reference              : Your own reference or description of the modification. (optional)
+     */
+    ModificationRequest modificationRequest = new ModificationRequest();
+    modificationRequest.merchantAccount = "YourMerchantAccount";
+    modificationRequest.originalReference = "PspReferenceOfTheAuthorisedPayment";
+    modificationRequest.reference = "YourReference";
+
+    /**
+     * Send the cancel request.
+     */
+    ModificationResult modificationResult = client.cancel(modificationRequest);
+
+    /**
+     * If the message was syntactically valid and merchantAccount is correct you will receive a modification
+     * response with the following fields:
+     * - pspReference: A new reference to uniquely identify this modification request.
+     * - response: A confirmation indicating we receievd the request: [cancel-received].
+     * 
+     * Please note: The result of the cancellation is sent via a notification with eventCode CANCELLATION.
+     */
+    <p><strong>Modification Result</strong></p>
+    <ul>
+        <li>pspReference: @modificationResult.pspReference</li>
+        <li>response: @modificationResult.response</li>
+    </ul>
+}

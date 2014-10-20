@@ -1,0 +1,78 @@
+﻿@using Adyen.Services.Payment
+@using System.ServiceModel
+
+@*
+    * Refund a Payment (SOAP)
+    *
+    * Settled payments can be refunded by sending a modifiction request to the refund action of the WSDL. This file shows
+    * how a settled payment can be refunded by a modification request using SOAP.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /4.Modifications/Soap/RefundPayment.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Payment";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    PaymentPortTypeClient client = new PaymentPortTypeClient("PaymentHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * Perform refund request by sending in a modificationRequest, the protocol is defined in the WSDL.
+     * The following parameters are used:
+     * 
+     * - merchantAccount      : The merchant account used to process the payment.
+     * - modificationAmount
+     *     - currency         : The three character ISO currency code, must match that of the original payment request.
+     *     - value            : The amount to refund (in minor units), must be less than or equal to the authorised amount.
+     * - originalReference    : The pspReference that was assigned to the authorisation.
+     * - reference            : Your own reference or description of the modification. (optional)
+     */
+    ModificationRequest modificationRequest = new ModificationRequest();
+    modificationRequest.merchantAccount = "YourMerchantAccount";
+    modificationRequest.originalReference = "PspReferenceOfTheAuthorisedPayment";
+    modificationRequest.reference = "YourReference";
+
+    Amount amount = new Amount();
+    amount.currency = "EUR";
+    amount.value = 199;
+    modificationRequest.modificationAmount = amount;
+
+    /**
+     * Send the refund request.
+     */
+    ModificationResult modificationResult = client.refund(modificationRequest);
+
+   /**
+     * If the message was syntactically valid and merchantAccount is correct you will receive a modification
+     * response with the following fields:
+     * - pspReference: A new reference to uniquely identify this modification request.
+     * - response: A confirmation indicating we receievd the request: [refund-received].
+     * 
+     * Please note: The result of the refund is sent via a notification with eventCode REFUND.
+     */
+    <p><strong>Modification Result</strong></p>
+    <ul>
+        <li>pspReference: @modificationResult.pspReference</li>
+        <li>response: @modificationResult.response</li>
+    </ul>
+}
