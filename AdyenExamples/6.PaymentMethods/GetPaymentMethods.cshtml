@@ -1,0 +1,109 @@
+﻿@using System.Net.Http;
+@using System.Security.Cryptography;
+@using System.Text;
+
+@*
+    * Get Payment Methods
+    *
+    * You may decide to skip the Adyen payment method selection page so that the shopper starts directly on the payment
+    * details entry page. This is done by calling details.shtml instead of pay.shtml/select.shtml. An additional parameter,
+    * brandCode and where applicable issuerId, should be provided with the selected payment method listed. Please refer to
+    * section 2.9 of the Integration Manual for more details.
+    *
+    * The directory service can also be used to determine which payment methods are available for the shopper on your
+    * Merchant Account. This is done by calling directory.shtml, with a normal payment request. Please note that the
+    * countryCode field is mandatory to receive back the correct payment methods.
+    *
+    * This file provides a code example showing how to retreive the payment methods enabled for the specified merchant
+    * account.
+    *
+    * @link /6.PaymentMethods/GetPaymentMethods.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * Directory Service settings
+     * - apiUrl: URL of the Adyen directory service
+     * - hmacKey: shared secret key used to encrypt the signature
+     *
+     * Both variables are dependent on the environment which should be used (Test/Live).
+     * HMAC key can be set up: Adyen CA >> Skins >> Choose your Skin >> Edit Tab >> Edit HMAC key for Test & Live.
+     */
+    string apiUrl = "https://test.adyen.com/hpp/directory.shtml";
+    string hmacKey = "YourHmacSecretKey";
+
+    /**
+     * The following fields are required for the directory service.
+     */
+
+    // Define variables
+    string merchantReference = "Request payment methods";
+    string paymentAmount = "100";
+    string currencyCode = "EUR";
+    string skinCode = "YourSkinCode";
+    string merchantAccount = "YourMerchantAccount";
+    string sessionValidity = DateTime.Now.AddDays(1).ToString("yyyy-MM-ddTHH:mm:ssK");
+
+    // Calculate merchant signature
+    string signingString = paymentAmount + currencyCode + merchantReference + skinCode + merchantAccount + sessionValidity;
+    string merchantSig = CalculateHMAC(hmacKey, signingString);
+
+    // Set HTTP Post variables
+    var values = new List<KeyValuePair<string, string>>
+    {
+        new KeyValuePair<string, string>("merchantReference", merchantReference),
+        new KeyValuePair<string, string>("paymentAmount", paymentAmount),
+        new KeyValuePair<string, string>("currencyCode", currencyCode),
+        new KeyValuePair<string, string>("skinCode", skinCode),
+        new KeyValuePair<string, string>("merchantAccount", merchantAccount),
+        new KeyValuePair<string, string>("sessionValidity", sessionValidity),
+        new KeyValuePair<string, string>("merchantSig", merchantSig)
+    };
+
+    /**
+     * Create HTTP Client (using Microsoft.Net.Http library)  and send the request with the specified variables.
+     */
+    var httpClient = new HttpClient();
+
+    HttpResponseMessage response = httpClient.PostAsync(apiUrl, new FormUrlEncodedContent(values)).Result;
+    string result = response.Content.ReadAsStringAsync().Result;
+
+    /**
+     * Keep in mind that you should handle errors correctly.
+     * If the Adyen platform does not accept or store a submitted request, you will receive a HTTP response with
+     * status code 500 Internal Server Error. The fault string can be found in the result.
+     */
+    if (!response.IsSuccessStatusCode)
+    {
+        if (response.StatusCode == HttpStatusCode.InternalServerError)
+        {
+            throw new HttpException((int)response.StatusCode, result);
+        }
+        else
+        {
+            throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+        }
+    }
+
+    /**
+     * The result contains a JSON array containing the available payment methods for the merchant account.
+     */
+    @result
+
+}
+
+@functions {
+    // Computes the Base64 encoded signature using the HMAC algorithm with the SHA-1 hashing function.
+    string CalculateHMAC(string hmacKey, string signingstring)
+    {
+        byte[] key = Encoding.UTF8.GetBytes(hmacKey);
+        byte[] data = Encoding.UTF8.GetBytes(signingstring);
+
+        using (HMACSHA1 hmac = new HMACSHA1(key))
+        {
+            byte[] result = hmac.ComputeHash(data);
+            return Convert.ToBase64String(result);
+        }
+    }
+}
