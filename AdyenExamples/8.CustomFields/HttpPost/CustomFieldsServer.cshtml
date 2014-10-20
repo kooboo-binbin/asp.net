@@ -1,0 +1,110 @@
+﻿@using System.Text
+
+@*
+    * Custom fields service (HTTP Post)
+    *
+    * Custom fields are a powerful feature of the payment pages that allow you to add form fields to the HPP. These will be
+    * sent to you before final payment submission for approval; you may use this feature to capture any additional data or
+    * permissions that you may require, such as collecting shipping data, forcing the shopper to accept terms and
+    * conditions, or checking a validation code.
+    *
+    * Customfields are not enabled by default, they have to be enabled per skin.
+    * 1. Enable for skin: Adyen CA >> Skins >> Select Skin >> Custom Fields >> Set up URLs.
+    * 2. Add HTML input fields whose name attribute is prefixed with customfields (e.g."customfields.subscribe") to the
+    * skin. Please see the Skin Creation Manual for more details.
+    *
+    * @link /8.CustomFields/HttpPost/CustomFieldsServer.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * Check authentication
+     * 
+    * We recommend you to secure your OpenInvoice server. You can secure it using a username/password which can be
+    * configured in the CA. The username and password will be available in the Authorization header of the request.
+    * Alternatively, is to allow only traffic that comes from Adyen servers.
+     */
+    string notificationUser = "TestUser";
+    string notificationPassword = "TestPassword";
+
+    string authHeader = Request.Headers["Authorization"];
+
+    if (authHeader == null)
+    {
+        throw new HttpException(401, "Unauthorized");
+    }
+    else {
+        string encodedAuth = authHeader.Split(' ')[1];
+        string decodedAuth = Encoding.UTF8.GetString(Convert.FromBase64String(encodedAuth));
+    
+        var requestUser = decodedAuth.Split(':')[0];
+        var requestPassword = decodedAuth.Split(':')[1];
+
+        if (!notificationUser.Equals(requestUser) || !notificationPassword.Equals(requestPassword))
+        {
+            throw new HttpException(403, "Forbidden");
+        }
+    }
+
+    /**
+     * Handle custom fields request
+     * 
+     * The following request parameters are available:
+     * - request.merchantAccount
+     * - request.merchantReference
+     * 
+     * - request.customFields.0.name: SomeField1
+     * - request.customFields.0.value: SomeValue1
+     * - request.customFields.1.name: SomeField1
+     * - request.customFields.1.value: SomeValue1
+     * - (..)
+     * 
+     * - request.sessionFields.0.name: paymentAmount
+     * - request.sessionFields.0.value: 199
+     * - request.sessionFields.1.name: currencyCode
+     * - request.sessionFields.1.value: EUR
+     * - (..)
+     */
+
+    // Check how many custom fields are submitted
+    int customFieldsCount = Request.Form.AllKeys.Count(s => s.StartsWith("request.customFields"));
+
+    // Collect all custom fields
+    Dictionary<string, string> customFields = new Dictionary<string, string>();
+
+    for (int i = 0; i < customFieldsCount / 2; i++)
+    {
+        string name = Request.Form["request.customFields." + i + ".name"];
+        string value = Request.Form["request.customFields." + i + ".value"];
+        customFields.Add(name, value);
+    }
+
+    /**
+     * Return result
+     * 
+     * If you respond with [accepted] the payment is allowed to continue. If not, you can specify which fields
+     * failed validation and the validation messages to display. If you need to store the custom fields data, you
+     * must do so at this point, the data cannot be sent to you via the Notification server.
+     * 
+     * In this example we only expect one parameter: terms_conditions = true. A simple check can be done to verify
+     * if the shopper has thicked the checkbox. Obviously, more sophisticated validations can be added.
+     */
+    var response = HttpUtility.ParseQueryString(string.Empty);
+
+    if (customFields.ContainsKey("terms_conditions") && !String.IsNullOrEmpty(customFields["terms_conditions"]))
+    {
+        response["response.sessionFields.0.name"] = "terms_conditions";
+        response["response.sessionFields.0.value"] = "true";
+        response["response.response"] = "[accepted]";
+    }
+    else
+    {
+        response["response.customFields.0.name"] = "terms_conditions";
+        response["response.customFields.0.value"] = "Please agree with terms and conditions!";
+        response["response.response"] = "[invalid]";
+    }
+
+    // Output the response
+    @Html.Raw(response.ToString())
+}
