@@ -1,0 +1,96 @@
+﻿@using System.Net.Http;
+
+@*
+    * Capture a Payment (HTTP Post)
+    *
+    * Authorised (card) payments can be captured to get the money from the shopper. Payments can be automatically captured
+    * by our platform. A payment can also be captured by performing an API call. In order to capture an authorised (card)
+    * payment you have to send a modification request. This file shows how an authorised payment should be captured by
+    * sending a modification request using HTTP Post.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /4.Modifications/HttpPost/CapturePayment.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * HTTP Post settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/adapter/httppost";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create HTTP Client (using Microsoft.Net.Http library) and set up Basic Authentication
+     */
+    var httpClientHandler = new HttpClientHandler();
+    httpClientHandler.Credentials = new NetworkCredential(wsUser, wsPassword);
+    var httpClient = new HttpClient(httpClientHandler);
+
+    /**
+     * Perform capture request by sending in a modification request, containing the following variables:
+     * 
+     * - action                 : Payment.capture
+     * - modificationRequest
+     *   - merchantAccount      : The merchant account used to process the payment.
+     *   - modificationAmount
+     *       - currency         : The three character ISO currency code, must match that of the original payment request.
+     *       - value            : The amount to capture (in minor units), must be less than or equal to the authorised amount.
+     *   - originalReference    : The pspReference that was assigned to the authorisation.
+     *   - reference            : Your own reference or description of the modification. (optional)
+     */
+    var values = new List<KeyValuePair<string, string>>
+    {
+        new KeyValuePair<string, string>("action", "Payment.capture"),
+        new KeyValuePair<string, string>("modificationRequest.merchantAccount", "YourMerchantAccount"),
+        new KeyValuePair<string, string>("modificationRequest.modificationAmount.currency", "EUR"),
+        new KeyValuePair<string, string>("modificationRequest.modificationAmount.value", "199"),
+        new KeyValuePair<string, string>("modificationRequest.originalReference", "PspReferenceOfTheAuthorisedPayment"),
+        new KeyValuePair<string, string>("modificationRequest.reference", "YourReference")
+    };
+
+    /**
+     * Send the HTTP Post request with the specified variables.
+     */
+    HttpResponseMessage response = httpClient.PostAsync(apiUrl, new FormUrlEncodedContent(values)).Result;
+    string responseString = response.Content.ReadAsStringAsync().Result;
+
+    /**
+     * Keep in mind that you should handle errors correctly.
+     * If the Adyen platform does not accept or store a submitted request, you will receive a HTTP response with
+     * status code 500 Internal Server Error. The fault string can be found in the responseString.
+     */
+    if (!response.IsSuccessStatusCode)
+    {
+        if (response.StatusCode == HttpStatusCode.InternalServerError)
+        {
+            throw new HttpException((int)response.StatusCode, responseString);
+        }
+        else
+        {
+            throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+        }
+    }
+
+    /**
+     * If the message was syntactically valid and merchantAccount is correct you will receive a modification
+     * response with the following fields:
+     * - pspReference: A new reference to uniquely identify this modification request.
+     * - response: A confirmation indicating we received the request: [capture-received].
+     * 
+     * Please note: The result of the capture is sent via a notification with eventCode CAPTURE.
+     */
+    var modificationResult = HttpUtility.ParseQueryString(responseString);
+    
+    <p><strong>Modification Result</strong></p>
+    <ul>
+        <li>pspReference: @modificationResult.Get("modificationResult.pspReference")</li>
+        <li>response: @modificationResult.Get("modificationResult.response")</li>
+    </ul>
+}

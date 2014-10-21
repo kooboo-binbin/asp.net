@@ -1,0 +1,133 @@
+﻿@using System.Net.Http;
+
+@*
+    * Create Payment through the API (HTTP Post)
+    *
+    * Payments can be created through our API, however this is only possible if you are PCI Compliant. HTTP Post payments
+    * are submitted using the Payment.authorise action. We will explain a simple credit card submission.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /2.API/HttpPost/CreatePaymentAPI.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * HTTP Post settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/adapter/httppost";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create HTTP Client (using Microsoft.Net.Http library) and set up Basic Authentication
+     */
+    var httpClientHandler = new HttpClientHandler();
+    httpClientHandler.Credentials = new NetworkCredential(wsUser, wsPassword);
+    var httpClient = new HttpClient(httpClientHandler);
+
+    /**
+     * A payment can be submitted with a HTTP Post request to the API, containing the following variables:
+     *
+     * - action                      : Payment.authorise
+     * - paymentRequest
+     *   - merchantAccount           : The merchant account for which you want to process the payment
+     *   - amount
+     *       - currency              : The three character ISO currency code.
+     *       - value                 : The transaction amount in minor units (e.g. EUR 1,00 = 100).
+     *   - reference                 : Your reference for this payment.
+     *   - shopperIP                 : The shopper's IP address. (recommended)
+     *   - shopperEmail              : The shopper's email address. (recommended)
+     *   - shopperReference          : An ID that uniquely identifes the shopper, such as a customer id. (recommended)
+     *   - fraudOffset               : An integer that is added to the normal fraud score. (optional)
+     *   - card
+     *       - expiryMonth           : The expiration date's month written as a 2-digit string,
+     *                                 padded with 0 if required (e.g. 03 or 12).
+     *       - expiryYear            : The expiration date's year written as in full (e.g. 2016).
+     *       - holderName            : The card holder's name, as embossed on the card.
+     *       - number                : The card number.
+     *       - cvc                   : The card validation code, which is the CVC2 (MasterCard),
+     *                                 CVV2 (Visa) or CID (American Express).
+     *       - billingAddress (recommended)
+     *           - street            : The street name.
+     *           - houseNumberOrName : The house number (or name).
+     *           - city              : The city.
+     *           - postalCode        : The postal/zip code.
+     *           - stateOrProvince   : The state or province.
+     *           - country           : The country in ISO 3166-1 alpha-2 format (e.g. NL).
+     */
+    var values = new List<KeyValuePair<string, string>>
+    {
+        new KeyValuePair<string, string>("action", "Payment.authorise"),
+
+        new KeyValuePair<string, string>("paymentRequest.merchantAccount", "YourMerchantAccount"),
+        new KeyValuePair<string, string>("paymentRequest.reference", "TEST-PAYMENT-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss")),
+        new KeyValuePair<string, string>("paymentRequest.shopperIP", "123.123.123.123"),
+        new KeyValuePair<string, string>("paymentRequest.shopperEmail", "test@example.com"),
+        new KeyValuePair<string, string>("paymentRequest.shopperReference", "YourReference"),
+        new KeyValuePair<string, string>("paymentRequest.fraudOffset", "0"),
+
+        new KeyValuePair<string, string>("paymentRequest.amount.currency", "EUR"),
+        new KeyValuePair<string, string>("paymentRequest.amount.value", "199"),
+
+        new KeyValuePair<string, string>("paymentRequest.card.expiryMonth", "06"),
+        new KeyValuePair<string, string>("paymentRequest.card.expiryYear", "2016"),
+        new KeyValuePair<string, string>("paymentRequest.card.holderName", "John Doe"),
+        new KeyValuePair<string, string>("paymentRequest.card.number", "5555444433331111"),
+        new KeyValuePair<string, string>("paymentRequest.card.cvc", "737"),
+
+        new KeyValuePair<string, string>("paymentRequest.card.billingAddress.street", "Simon Carmiggeltstraat"),
+        new KeyValuePair<string, string>("paymentRequest.card.billingAddress.houseNumberOrName", "6-50"),
+        new KeyValuePair<string, string>("paymentRequest.card.billingAddress.postalCode", "1011 DJ"),
+        new KeyValuePair<string, string>("paymentRequest.card.billingAddress.city", "Amsterdam"),
+        new KeyValuePair<string, string>("paymentRequest.card.billingAddress.stateOrProvince", ""),
+        new KeyValuePair<string, string>("paymentRequest.card.billingAddress.country", "NL")
+    };
+
+    /**
+     * Send the HTTP Post request with the specified variables.
+     */
+    HttpResponseMessage response = httpClient.PostAsync(apiUrl, new FormUrlEncodedContent(values)).Result;
+    string responseString = response.Content.ReadAsStringAsync().Result;
+
+    /**
+     * Keep in mind that you should handle errors correctly.
+     * If the Adyen platform does not accept or store a submitted request, you will receive a HTTP response with
+     * status code 500 Internal Server Error. The fault string can be found in the responseString.
+     */
+    if (!response.IsSuccessStatusCode)
+    {
+        if (response.StatusCode == HttpStatusCode.InternalServerError)
+        {
+            throw new HttpException((int)response.StatusCode, responseString);
+        }
+        else
+        {
+            throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+        }
+    }
+
+    /**
+     * If the payment passes validation a risk analysis will be done and, depending on the outcome, an authorisation
+     * will be attempted. You receive a payment response with the following fields:
+     *
+     * - pspReference    : Adyen's unique reference that is associated with the payment.
+     * - resultCode      : The result of the payment. Possible values: Authorised, Refused, Error or Received.
+     * - authCode        : The authorisation code if the payment was successful. Blank otherwise.
+     * - refusalReason   : Adyen's mapped refusal reason, populated if the payment was refused.
+     */
+    var paymentResult = HttpUtility.ParseQueryString(responseString);
+
+    <p><strong>Payment Result</strong></p>
+    <ul>
+        <li>pspReference: @paymentResult.Get("paymentResult.pspReference")</li>
+        <li>resultCode: @paymentResult.Get("paymentResult.resultCode")</li>
+        <li>authCode: @paymentResult.Get("paymentResult.authCode")</li>
+        <li>refusalReason: @paymentResult.Get("paymentResult.refusalReason")</li>
+    </ul>
+}

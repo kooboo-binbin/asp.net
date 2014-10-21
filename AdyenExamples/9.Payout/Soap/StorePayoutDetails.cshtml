@@ -1,0 +1,97 @@
+﻿@using Adyen.Services.Payout
+@using System.ServiceModel
+
+@*
+    * Store Payout Details (SOAP)
+    *
+    * Besides storing Payout details using the normal payment flow (see Payout Manual), a separate webservice call can be
+    * done to store Payout details for a specific shopper. For example if you collect the Payout details on your own
+    * website. This example shows how to store the payout details (in this case the bank account of a shopper) using SOAP.
+    *
+    * Please note: the Payout functionality is set up as a 2-step process. Because of this there are two additional
+    * Webservice User accounts needed to use the Payout process. Please request the Payout permission for a specific user
+    * account with Adyen Support. The password can be set in Adyen CA >> Settings >> Users.
+    *
+    * @link /9.Payout/Soap/StorePayoutDetails.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl  URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user to store Payout details, and to initiate a Payout
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Payout";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    PayoutPortTypeClient client = new PayoutPortTypeClient("PayoutHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * To submit the payout details, call the storeDetail action on the Payout Service. The storeDetail request has
+     * the following fields:
+     * 
+     * - recurring
+     *     - contract       : The contract value of the recurring object should be present and contain value PAYOUT.
+     * - merchantAccount    : The merchant account you want to process this payout with.
+     * - shopperEmail       : The email address of the shopper.
+     * - shopperReference   : The reference to the shopper. This value identifies an unique shopper. Therefore you have to make sure that this value is different for multiple shoppers.
+     * - bank
+     *     - iban           : The complete IBAN number of the shopper.
+     *     - bic            : The associated bic number of the bank.
+     *     - bankName       : The name of the bank from the shopper.
+     *     - countryCode    : The country code of where the bank of the shopper is based.
+     *     - ownerName      : The name which is used to register the bank account number.
+     */
+
+    // Create new payment request
+    StoreDetailRequest storeDetailsRequest = new StoreDetailRequest();
+    storeDetailsRequest.merchantAccount = "YourMerchantAccount";
+    storeDetailsRequest.shopperEmail = "test@shopper.com";
+    storeDetailsRequest.shopperReference = "ShopperReference";
+
+    // Set recurring contract
+    Recurring recurring = new Recurring();
+    recurring.contract = "PAYOUT";
+    storeDetailsRequest.recurring = recurring;
+
+    // Set bank account
+    BankAccount bankAccount = new BankAccount();
+    bankAccount.iban = "NL13TEST0123456789";
+    bankAccount.bic = "TESTNL01";
+    bankAccount.bankName = "TestBank";
+    bankAccount.countryCode = "NL";
+    bankAccount.ownerName = "Test Shopper";
+    storeDetailsRequest.bank = bankAccount;
+
+    /**
+     * Send the store details request.
+     */
+    StoreDetailResponse storeDetailsResult = client.storeDetail(storeDetailsRequest);
+
+    /**
+     * If the message is syntactically valid and merchantAccount is correct you will receive a storeDetailResponse
+     * with the following fields:
+     * 
+     * - pspReference               : A new reference to uniquely identify this request.
+     * - recurringDetailReference   : The token which you can use later on for submitting the Payout.
+     * - resultCode                 : Should be Success to indicate that the details were stored successfully.
+     */
+    <p><strong>Store Details Result</strong></p>
+    <ul>
+        <li>pspReference: @storeDetailsResult.pspReference</li>
+        <li>recurringDetailReference: @storeDetailsResult.recurringDetailReference</li>
+        <li>resultCode: @storeDetailsResult.resultCode</li>
+    </ul>
+}

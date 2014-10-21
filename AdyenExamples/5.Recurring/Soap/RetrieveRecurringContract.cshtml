@@ -1,0 +1,107 @@
+﻿@using Adyen.Services.Recurring
+@using System.ServiceModel
+
+@*
+    * Retrieve recurring contract details (SOAP)
+    *
+    * Once a shopper has stored RECURRING details with Adyen you are able to process a RECURRING payment. This file shows
+    * you how to retrieve the RECURRING contract(s) for a shopper using SOAP.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /5.Recurring/Soap/RetrieveRecurringContract.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Recurring";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    RecurringPortTypeClient client = new RecurringPortTypeClient("RecurringHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * The recurring details request should contain the following variables:
+     * 
+     * - merchantAccount    : Your merchant account.
+     * - shopperReference   : The reference to the shopper. This shopperReference must be the same as the
+     *                        shopperReference used in the initial payment.
+     * - recurring
+     *     - contract       : This should be the same value as recurringContract in the payment where the recurring
+     *                        contract was created. However if ONECLICK,RECURRING was specified initially then this
+     *                        field can be either ONECLICK or RECURRING.
+     */
+    RecurringDetailsRequest recurringRequest = new RecurringDetailsRequest();
+    recurringRequest.merchantAccount = "YourMerchantAccount";
+    recurringRequest.shopperReference = "TheShopperReference";
+
+    Recurring recurring = new Recurring();
+    recurring.contract = "RECURRING";
+    recurringRequest.recurring = recurring;
+
+    /**
+     * Send the recurring details request.
+     */
+    RecurringDetailsResult recurringResult = client.listRecurringDetails(recurringRequest);
+
+    /**
+     * The recurring details response will contain the following fields:
+     * 
+     * - creationDate
+     * - lastKnownShopperEmail
+     * - shopperReference
+     * - recurringDetail              : A list of zero or more details, containing:
+     *     - recurringDetailReference : The reference the details are stored under.
+     *     - variant                  : The payment method (e.g. mc, visa, elv, ideal, paypal).
+     *                                  For some variants, like iDEAL, the sub-brand is returned like idealrabobank.
+     *     - creationDate             : The date when the recurring details were created.
+     *     - card                     : A container for credit card data.
+     *     - elv                      : A container for ELV data.
+     *     - bank                     : A container for BankAccount data.
+     * 
+     * The recurring contracts are stored in the same object types as you would have submitted in the initial
+     * payment. Depending on the payment method one or more fields may be blank or incomplete (e.g. CVC for card).
+     * Only one of the detail containers (card/elv/bank) will be returned per detail block, the others will be null.
+     * For PayPal there is no detail container.
+     */
+    <p><strong>Recurring Details Result</strong></p>
+    <ul>
+        <li>creationDate: @recurringResult.creationDate</li>
+        <li>lastKnownShopperEmail: @recurringResult.lastKnownShopperEmail</li>
+        <li>shopperReference: @recurringResult.shopperReference</li>
+        <li>recurringDetail:
+            <ol>
+                @foreach (RecurringDetail recurringDetail in recurringResult.details)
+                {
+                    <li>
+                        <ul>
+                            <li>recurringDetailReference: @recurringDetail.recurringDetailReference</li>
+                            <li>variant: @recurringDetail.variant</li>
+                            <li>creationDate: @recurringDetail.creationDate</li>
+                            <li>bank: @recurringDetail.bank</li>
+                            <li>card: @recurringDetail.card</li>
+                            <li>elv: @recurringDetail.elv</li>
+                            <li>name: @recurringDetail.name</li>
+                        </ul>
+                    </li>
+                }
+            </ol>
+        </li>
+    </ul>
+}

@@ -1,0 +1,123 @@
+﻿@using Adyen.Services.Payment
+@using System.ServiceModel
+
+@*
+    * Create Payment through the API (SOAP)
+    *
+    * Payments can be created through our API, however this is only possible if you are PCI Compliant. SOAP API payments
+    * are submitted using the authorise action. We will explain a simple credit card submission.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /2.API/Soap/CreatePaymentAPI.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Payment";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    PaymentPortTypeClient client = new PaymentPortTypeClient("PaymentHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * A payment can be submitted by sending a PaymentRequest to the authorise action of the web service.
+     * The request should contain the following variables:
+     * 
+     * - merchantAccount           : The merchant account for which you want to process the payment
+     * - amount
+     *     - currency              : The three character ISO currency code.
+     *     - value                 : The transaction amount in minor units (e.g. EUR 1,00 = 100).
+     * - reference                 : Your reference for this payment.
+     * - shopperIP                 : The shopper's IP address. (recommended)
+     * - shopperEmail              : The shopper's email address. (recommended)
+     * - shopperReference          : An ID that uniquely identifes the shopper, such as a customer id. (recommended)
+     * - fraudOffset               : An integer that is added to the normal fraud score. (optional)
+     * - card
+     *     - expiryMonth           : The expiration date's month written as a 2-digit string,
+     *                               padded with 0 if required (e.g. 03 or 12).
+     *     - expiryYear            : The expiration date's year written as in full (e.g. 2016).
+     *     - holderName            : The card holder's name, as embossed on the card.
+     *     - number                : The card number.
+     *     - cvc                   : The card validation code, which is the CVC2 (MasterCard),
+     *                               CVV2 (Visa) or CID (American Express).
+     *     - billingAddress (recommended)
+     *         - street            : The street name.
+     *         - houseNumberOrName : The house number (or name).
+     *         - city              : The city.
+     *         - postalCode        : The postal/zip code.
+     *         - stateOrProvince   : The state or province.
+     *         - country           : The country in ISO 3166-1 alpha-2 format (e.g. NL).
+     */
+
+    // Create new payment request
+    PaymentRequest paymentRequest = new PaymentRequest();
+    paymentRequest.merchantAccount = "YourMerchantAccount";
+    paymentRequest.reference = "TEST-PAYMENT-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss");
+    paymentRequest.shopperIP = "123.123.123.123";
+    paymentRequest.shopperEmail = "test@example.com";
+    paymentRequest.shopperReference = "YourReference";
+    paymentRequest.fraudOffset = 0;
+    
+    // Set amount
+    Amount amount = new Amount();
+    amount.currency = "EUR";
+    amount.value = 199;
+    paymentRequest.amount = amount;
+    
+    // Set card
+    Card card = new Card();
+    card.expiryMonth = "06";
+    card.expiryYear = "2016";
+    card.holderName = "John Doe";
+    card.number = "5555444433331111";
+    card.cvc = "737";
+
+    Address billingAddress = new Address();
+    billingAddress.street = "Simon Carmiggeltstraat";
+    billingAddress.houseNumberOrName = "6-50";
+    billingAddress.postalCode = "1011 DJ";
+    billingAddress.city = "Amsterdam";
+    billingAddress.stateOrProvince = "";
+    billingAddress.country = "NL";
+    
+    paymentRequest.card = card;
+    
+    /**
+     * Send the authorise request.
+     */
+    PaymentResult paymentResult = client.authorise(paymentRequest);
+
+    /**
+     * If the payment passes validation a risk analysis will be done and, depending on the outcome, an authorisation
+     * will be attempted. You receive a payment response with the following fields:
+     *
+     * - pspReference    : Adyen's unique reference that is associated with the payment.
+     * - resultCode      : The result of the payment. Possible values: Authorised, Refused, Error or Received.
+     * - authCode        : The authorisation code if the payment was successful. Blank otherwise.
+     * - refusalReason   : Adyen's mapped refusal reason, populated if the payment was refused.
+     */
+    <p><strong>Payment Result</strong></p>
+    <ul>
+        <li>pspReference: @paymentResult.pspReference</li>
+        <li>resultCode: @paymentResult.resultCode</li>
+        <li>authCode: @paymentResult.authCode</li>
+        <li>refusalReason: @paymentResult.refusalReason</li>
+    </ul>
+}

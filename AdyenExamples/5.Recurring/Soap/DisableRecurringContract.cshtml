@@ -1,0 +1,69 @@
+﻿@using Adyen.Services.Recurring
+@using System.ServiceModel
+
+@*
+    * Disable recurring contract (SOAP)
+    *
+    * Disabling a recurring contract (detail) can be done by calling the disable action on the Recurring service with a
+    * request. This file shows how you can disable a recurring contract using SOAP.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /5.Recurring/Soap/DisableRecurringContract.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * SOAP settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/servlet/soap/Recurring";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create SOAP client, using generated Service Reference (see App_WebReferences folder).
+     * The Service Reference was added in Visual Studio using Website >> Add Service Reference.
+     */
+    RecurringPortTypeClient client = new RecurringPortTypeClient("RecurringHttpPort", apiUrl);
+
+    // Set HTTP Authentication
+    ((BasicHttpBinding)client.Endpoint.Binding).Security.Transport.ClientCredentialType = HttpClientCredentialType.Basic;
+    client.ClientCredentials.UserName.UserName = wsUser;
+    client.ClientCredentials.UserName.Password = wsPassword;
+
+    /**
+     * The disable recurring contract request should contain the following variables:
+     * 
+     * - merchantAccount    : Your merchant account.
+     * - shopperReference   : The reference to the shopper. This shopperReference must be the same as the
+     *                        shopperReference used in the initial payment.
+     * - recurring
+     *     - contract       : The recurringDetailReference of the details you wish to disable. If you do not supply
+     *                        this field all details for the shopper will be disabled including the contract!
+     *                        This means that you can not add new details anymore.
+     */
+    DisableRequest recurringRequest = new DisableRequest();
+    recurringRequest.merchantAccount = "YourMerchantAccount";
+    recurringRequest.shopperReference = "TheShopperReference";
+    recurringRequest.recurringDetailReference = "TheDetailReferenceOfTheContract";
+
+    /**
+     * Send the disable recurring contract request.
+     */
+    DisableResult recurringResult = client.disable(recurringRequest);
+
+    /**
+     * The response will be a result object with a single field response. If a single detail was disabled the value
+     * of this field will be [detail-successfully-disabled] or, if all details are disabled, the value is
+     * [all-details-successfully-disabled].
+     */
+    <p><strong>Disable Recurring Result:</strong></p>
+    <ul>
+        <li>response: @recurringResult.response</li>
+    </ul>
+}

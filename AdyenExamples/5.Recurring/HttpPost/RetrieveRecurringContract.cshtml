@@ -1,0 +1,113 @@
+﻿@using System.Net.Http;
+
+@*
+    * Retrieve recurring contract details (HTTP Post)
+    *
+    * Once a shopper has stored RECURRING details with Adyen you are able to process a RECURRING payment. This file shows
+    * you how to retrieve the RECURRING contract(s) for a shopper using HTTP Post.
+    *
+    * Please note: using our API requires a web service user. Set up your Webservice user:
+    * Adyen CA >> Settings >> Users >> ws@Company. >> Generate Password >> Submit
+    *
+    * @link /5.Recurring/HttpPost/RetrieveRecurringContract.cshtml
+    * @author Created by Adyen - Payments Made Easy
+*@
+
+@{
+    /**
+     * HTTP Post settings
+     * - apiUrl: URL of the Adyen API you are using (Test/Live)
+     * - wsUser: your web service user
+     * - wsPassword: your web service user's password
+     */
+    string apiUrl = "https://pal-test.adyen.com/pal/adapter/httppost";
+    string wsUser = "YourWSUser";
+    string wsPassword = "YourWSPassword";
+
+    /**
+     * Create HTTP Client (using Microsoft.Net.Http library) and set up Basic Authentication
+     */
+    var httpClientHandler = new HttpClientHandler();
+    httpClientHandler.Credentials = new NetworkCredential(wsUser, wsPassword);
+    var httpClient = new HttpClient(httpClientHandler);
+
+    /**
+     * The recurring details request should contain the following variables:
+     * 
+     * - action                   : Recurring.listRecurringDetails
+     * - recurringDetailsRequest
+     *   - merchantAccount        : Your merchant account.
+     *   - shopperReference       : The reference to the shopper. This shopperReference must be the same as the
+     *                            shopperReference used in the initial payment.
+     *   - recurring
+     *       - contract           : This should be the same value as recurringContract in the payment where the
+     *                              recurring contract was created. However if ONECLICK,RECURRING was specified
+     *                              initially then this field can be either ONECLICK or RECURRING.
+     */
+    var values = new List<KeyValuePair<string, string>>
+    {
+        new KeyValuePair<string, string>("action", "Recurring.listRecurringDetails"),
+        new KeyValuePair<string, string>("recurringDetailsRequest.merchantAccount", "YourMerchantAccount"),
+        new KeyValuePair<string, string>("recurringDetailsRequest.shopperReference", "TheShopperReference"),
+        new KeyValuePair<string, string>("recurringDetailsRequest.recurring.contract", "ONECLICK")
+    };
+
+    /**
+     * Send the HTTP Post request with the specified variables.
+     */
+    HttpResponseMessage response = httpClient.PostAsync(apiUrl, new FormUrlEncodedContent(values)).Result;
+    string responseString = response.Content.ReadAsStringAsync().Result;
+
+    /**
+     * Keep in mind that you should handle errors correctly.
+     * If the Adyen platform does not accept or store a submitted request, you will receive a HTTP response with
+     * status code 500 Internal Server Error. The fault string can be found in the responseString.
+     */
+    if (!response.IsSuccessStatusCode)
+    {
+        if (response.StatusCode == HttpStatusCode.InternalServerError)
+        {
+            throw new HttpException((int)response.StatusCode, responseString);
+        }
+        else
+        {
+            throw new HttpException((int)response.StatusCode, response.ReasonPhrase);
+        }
+    }
+
+    /**
+     * The recurring details response will contain the following fields:
+     * 
+     * - creationDate
+     * - lastKnownShopperEmail
+     * - shopperReference
+     * - recurringDetail              : A list of zero or more details, containing:
+     *     - recurringDetailReference : The reference the details are stored under.
+     *     - variant                  : The payment method (e.g. mc, visa, elv, ideal, paypal).
+     *                                  For some variants, like iDEAL, the sub-brand is returned like idealrabobank.
+     *     - creationDate             : The date when the recurring details were created.
+     *     - card                     : A container for credit card data.
+     *     - elv                      : A container for ELV data.
+     *     - bank                     : A container for BankAccount data.
+     * 
+     * The recurring contracts are stored in the same object types as you would have submitted in the initial
+     * payment. Depending on the payment method one or more fields may be blank or incomplete (e.g. CVC for card).
+     * Only one of the detail containers (card/elv/bank) will be returned per detail block, the others will be null.
+     * For PayPal there is no detail container.
+     */
+    var recurringResult = HttpUtility.ParseQueryString(responseString);
+        
+    <p><strong>Recurring Details Result</strong></p>
+    <ul>
+        <li>creationDate: @recurringResult["recurringDetailsResult.creationDate"]</li>
+        <li>lastKnownShopperEmail: @recurringResult["recurringDetailsResult.lastKnownShopperEmail"]</li>
+        <li>shopperReference: @recurringResult["recurringDetailsResult.shopperReference"]</li>
+        <li>recurringDetail:
+            <ul>
+            @foreach (string detail in recurringResult.AllKeys.Where(s => s.StartsWith("recurringDetailsResult.details")).OrderBy(_ => _))
+            {
+                <li>@detail : @recurringResult[detail]</li>
+            }
+        </ul>
+    </ul>
+}
