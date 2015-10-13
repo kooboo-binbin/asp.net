@@ -6,6 +6,7 @@ The code examples in this repository help you integrate with the Adyen platform 
 ```
 1.HPP (Hosted Payment Page)
   - CreatePaymentOnHpp             : Simple form creating a payment on our HPP
+  - CreatePaymentOnHpp256             : Simple form creating a payment on our HPP with SHA256
   - CreatePaymentOnHppAdvanced     : Advanced form creating a payment on our HPP
   - CreatePaymentUrl               : Create payment URL on our HPP
 2.API
