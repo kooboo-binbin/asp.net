@@ -2,6 +2,7 @@
 @using System.Security.Cryptography;
 @using System.Text
 
+
 @*
     * Create Payment On Hosted Payment Page (HPP)
     *
@@ -10,8 +11,8 @@
     *
     * @link /1.HPP/CreatePaymentOnHpp.cshtml
     * @author Created by Adyen - Payments Made Easy
+    
 *@
-
 @{
     /**
      * General HPP settings
@@ -76,8 +77,40 @@
      * empty. Please have a look at the advanced HPP example for a comprehensive overview on what should be part of
      * the signature.
      */
-    string signingString = paymentAmount + currencyCode + shipBeforeDate + merchantReference + skinCode + merchantAccount
-                         + sessionValidity + shopperEmail + shopperReference + allowedMethods + blockedMethods + offset;
+    Dictionary<string, string> paramlist = new Dictionary<string, string>();
+
+	paramlist.Add("currencyCode", currencyCode);
+	paramlist.Add("merchantAccount", merchantAccount);
+	paramlist.Add("merchantReference", merchantReference);	
+	paramlist.Add("paymentAmount", paymentAmount);
+	paramlist.Add("sessionValidity", sessionValidity);
+	paramlist.Add("shipBeforeDate", shipBeforeDate);
+	paramlist.Add("shopperLocale", shopperLocale);
+	paramlist.Add("skinCode", skinCode);
+    
+    //add custom data as JSON in the orderData field
+    List<CustomField> list = new List<CustomField>();   
+    list.Add(new CustomField("myVal1", "FOO"));
+    list.Add(new CustomField("myVal2", "BAR"));   
+
+    JsonEncoder encoder = new JsonEncoder(list);
+    var custom = encoder.GetJson();
+    paramlist.Add("orderData", custom);
+
+    /*
+     * In your skin add elements with id's equal to the names of the custom fields. for instance
+     * <span id="myVal1"></span>
+     * To decode the data in your skin JS do this:
+     *  var orderDataString = decodeURIComponent($("[name='orderData']").val());
+        var orderJson = $.parseJSON(orderDataString);      
+        $.each(orderJson, function (index, obj) {	              
+            if ($("#" + obj.Name) != undefined && obj.Value != undefined && obj.Value !== '') {
+                $("#" + obj.Name).html(obj.Value.replace("+", " ").replace("++"," "));  //this decodes spaces, you should do something more clever here!!
+            }
+        });
+     */
+
+    string signingString = BuildSigningString(paramlist);
     string merchantSig = CalculateHMAC(hmacKey, signingString);
 
 }
@@ -98,6 +131,26 @@
             }
         }
     }
+	
+	static string EscapeVal(string val)
+	{
+		if (val == null)
+		{
+			return string.Empty;
+		}
+
+		val = val.Replace(@"\", @"\\");
+		val = val.Replace(":", @"\:");
+		return val;
+	}
+
+	static string BuildSigningString(IDictionary<string, string> dict)
+	{
+		Dictionary<string, string> signDict = dict.OrderBy(d => d.Key).ToDictionary(pair => pair.Key, pair => pair.Value);
+		string keystring = string.Join(":", signDict.Keys);
+		string valuestring = string.Join(":", signDict.Values.Select(EscapeVal));
+		return string.Format("{0}:{1}", keystring, valuestring);
+	}
 
      // Computes the Base64 encoded signature using the HMAC algorithm with the HMACSHA256 hashing function.
   	string CalculateHMAC(string hmacKey, string signingstring)
@@ -161,6 +214,7 @@
         <input type="hidden" name="allowedMethods" value="@allowedMethods">
         <input type="hidden" name="blockedMethods" value="@blockedMethods">
         <input type="hidden" name="offset" value="@offset">
+        <input type="hidden" name="orderData" value="@orderData">
         <input type="hidden" name="merchantSig" value="@merchantSig">
         <input type="submit" value="Create payment">
     </form>
