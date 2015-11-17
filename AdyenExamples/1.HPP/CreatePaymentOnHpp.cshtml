@@ -22,7 +22,7 @@
      * HMAC key can be set up: Adyen CA >> Skins >> Choose your Skin >> Edit Tab >> Edit HMAC key for Test & Live.
      */
     string hppUrl = "https://test.adyen.com/hpp/pay.shtml";
-    string hmacKey = "YourHmacSecretKey";
+    string hmacKey = "abcdefg";
 
     /**
      * Defining variables
@@ -54,14 +54,14 @@
     string paymentAmount = "199";
     string currencyCode = "EUR";
     string shipBeforeDate = DateTime.Now.AddDays(3).ToString("yyyy-MM-dd");
-    string skinCode = "YourSkinCode";
-    string merchantAccount = "YourMerchantAccount";
+    string skinCode = "NZqEdYF8";
+    string merchantAccount = "StarteenwinkelNL";
     string sessionValidity = DateTime.Now.AddDays(1).ToString("yyyy-MM-ddTHH:mm:ssK");
     string shopperLocale = "en_US";
     string orderData = CompressString("Orderdata to display on the HPP can be put here");
     string countryCode = "NL";
-    string shopperEmail = "";
-    string shopperReference = "";
+    string shopperEmail = "binbin@kooboo.com";
+    string shopperReference = "buy1";
     string allowedMethods = "";
     string blockedMethods = "";
     string offset = "";
@@ -119,6 +119,8 @@
     <title>Adyen - Create Payment On Hosted Payment Page (HPP)</title>
 </head>
 <body>
+    @signingString
+   
     <form method="POST" action="@hppUrl" target="_blank">
         <input type="hidden" name="merchantReference" value="@merchantReference">
         <input type="hidden" name="paymentAmount" value="@paymentAmount">
