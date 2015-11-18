@@ -65,7 +65,7 @@
         new KeyValuePair<string, string>("action", "Payment.authorise"),
 
         new KeyValuePair<string, string>("paymentRequest.merchantAccount", MyConfig.MerchantAccount),
-        new KeyValuePair<string, string>("paymentRequest.reference", "TEST-PAYMENT-Recurring-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss")),
+        new KeyValuePair<string, string>("paymentRequest.reference", "TEST-Recurring-"+MyConfig.ShopperReference+"-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss")),
         new KeyValuePair<string, string>("paymentRequest.shopperIP", "123.123.123.123"),
         new KeyValuePair<string, string>("paymentRequest.shopperEmail", MyConfig.ShopperEmail),
         new KeyValuePair<string, string>("paymentRequest.shopperReference", MyConfig.ShopperReference),
@@ -73,13 +73,13 @@
 
         new KeyValuePair<string, string>("paymentRequest.selectedRecurringDetailReference", "LATEST"),
         new KeyValuePair<string, string>("paymentRequest.recurring.contract", "RECURRING"),
-        new KeyValuePair<string, string>("paymentRequest.shopperInteraction", "Ecommerce"),
+        new KeyValuePair<string, string>("paymentRequest.shopperInteraction", "ContAuth"),
 
         new KeyValuePair<string, string>("paymentRequest.amount.currency", "EUR"),
-        new KeyValuePair<string, string>("paymentRequest.amount.value", "199"),
+        new KeyValuePair<string, string>("paymentRequest.amount.value", "299"),
         
         // CVC is only required for OneClick card payments
-        new KeyValuePair<string, string>("paymentRequest.card.cvc", "737")
+        //new KeyValuePair<string, string>("paymentRequest.card.cvc", "737")
     };
 
     /**

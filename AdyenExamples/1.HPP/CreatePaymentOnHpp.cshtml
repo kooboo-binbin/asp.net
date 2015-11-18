@@ -50,7 +50,7 @@
      * offset               : An integer that is added to the normal fraud score. (optional)
      * merchantSig          : The HMAC signature used by Adyen to test the validy of the form.
      */
-    string merchantReference = "TEST-PAYMENT-Hpp" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss");
+    string merchantReference = "TEST-Hpp" + MyConfig.ShopperReference + "-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss");
     string paymentAmount = "199";
     string currencyCode = "EUR";
     string shipBeforeDate = DateTime.Now.AddDays(3).ToString("yyyy-MM-dd");
@@ -63,7 +63,7 @@
     string shopperEmail = MyConfig.ShopperEmail;
     string shopperReference = MyConfig.ShopperReference;
     string recurringContract = "RECURRING";
-    string allowedMethods = "";
+    string allowedMethods = "mc,visa,amex,ideal";
     string blockedMethods = "";
     string offset = "";
 
