@@ -22,8 +22,8 @@
      * - wsPassword: your web service user's password
      */
     string apiUrl = "https://pal-test.adyen.com/pal/adapter/httppost";
-    string wsUser = "YourWSUser";
-    string wsPassword = "YourWSPassword";
+    string wsUser = MyConfig.WSUser;
+    string wsPassword = MyConfig.WSPassword;
 
     /**
      * Create HTTP Client (using Microsoft.Net.Http library) and set up Basic Authentication
@@ -64,15 +64,15 @@
     {
         new KeyValuePair<string, string>("action", "Payment.authorise"),
 
-        new KeyValuePair<string, string>("paymentRequest.merchantAccount", "YourMerchantAccount"),
-        new KeyValuePair<string, string>("paymentRequest.reference", "TEST-PAYMENT-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss")),
+        new KeyValuePair<string, string>("paymentRequest.merchantAccount", MyConfig.MerchantAccount),
+        new KeyValuePair<string, string>("paymentRequest.reference", "TEST-PAYMENT-Recurring-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss")),
         new KeyValuePair<string, string>("paymentRequest.shopperIP", "123.123.123.123"),
-        new KeyValuePair<string, string>("paymentRequest.shopperEmail", "test@example.com"),
-        new KeyValuePair<string, string>("paymentRequest.shopperReference", "TheShopperReference"),
+        new KeyValuePair<string, string>("paymentRequest.shopperEmail", MyConfig.ShopperEmail),
+        new KeyValuePair<string, string>("paymentRequest.shopperReference", MyConfig.ShopperReference),
         new KeyValuePair<string, string>("paymentRequest.fraudOffset", "0"),
 
         new KeyValuePair<string, string>("paymentRequest.selectedRecurringDetailReference", "LATEST"),
-        new KeyValuePair<string, string>("paymentRequest.recurring.contract", "ONECLICK"),
+        new KeyValuePair<string, string>("paymentRequest.recurring.contract", "RECURRING"),
         new KeyValuePair<string, string>("paymentRequest.shopperInteraction", "Ecommerce"),
 
         new KeyValuePair<string, string>("paymentRequest.amount.currency", "EUR"),

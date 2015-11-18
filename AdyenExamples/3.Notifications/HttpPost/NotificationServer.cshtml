@@ -22,8 +22,8 @@
      * configured in the CA. The username and password will be available in the Authorization header of the request.
      * Alternatively, is to allow only traffic that comes from Adyen servers.
      */
-    String notificationUser = MyConfig.WSUser;
-    String notificationPassword = MyConfig.WSPassword;
+    String notificationUser = "TestUser";
+    String notificationPassword = "TestPassword";
 
     string authHeader = Request.Headers["Authorization"];
 
@@ -171,7 +171,7 @@
         }
 
         sb.AppendLine("****************************************************");
-        var path = Server.MapPath("~/log.txt");
+        var path = Server.MapPath(string.Format("~/{0}log.txt", DateTime.Now.ToString("yyyy-MM-dd")));
         using (var sw = new StreamWriter(path, true))
         {
             sw.Write(sb.ToString());
