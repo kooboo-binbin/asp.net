@@ -61,7 +61,8 @@
     string orderData = CompressString("Orderdata to display on the HPP can be put here");
     string countryCode = "NL";
     string shopperEmail = "binbin@kooboo.com";
-    string shopperReference = "buy1";
+    string shopperReference = "webshoq:shop:1";
+    string recurringContract = "RECURRING";
     string allowedMethods = "";
     string blockedMethods = "";
     string offset = "";
@@ -77,7 +78,7 @@
      * the signature.
      */
     string signingString = paymentAmount + currencyCode + shipBeforeDate + merchantReference + skinCode + merchantAccount
-                         + sessionValidity + shopperEmail + shopperReference + allowedMethods + blockedMethods + offset;
+                         + sessionValidity + shopperEmail + shopperReference + recurringContract + allowedMethods + blockedMethods + offset;
     string merchantSig = CalculateHMAC(hmacKey, signingString);
 
 }
@@ -100,6 +101,7 @@
     }
 
     // Computes the Base64 encoded signature using the HMAC algorithm with the SHA-1 hashing function.
+    //we should 
     string CalculateHMAC(string hmacKey, string signingstring)
     {
         byte[] key = Encoding.UTF8.GetBytes(hmacKey);
@@ -120,7 +122,7 @@
 </head>
 <body>
     @signingString
-   
+
     <form method="POST" action="@hppUrl" target="_blank">
         <input type="hidden" name="merchantReference" value="@merchantReference">
         <input type="hidden" name="paymentAmount" value="@paymentAmount">
@@ -134,6 +136,7 @@
         <input type="hidden" name="countryCode" value="@countryCode">
         <input type="hidden" name="shopperEmail" value="@shopperEmail">
         <input type="hidden" name="shopperReference" value="@shopperReference">
+        <input type="hidden" name="recurringContract" value="@recurringContract"/>
         <input type="hidden" name="allowedMethods" value="@allowedMethods">
         <input type="hidden" name="blockedMethods" value="@blockedMethods">
         <input type="hidden" name="offset" value="@offset">

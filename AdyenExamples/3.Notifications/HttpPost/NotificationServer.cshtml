@@ -22,28 +22,28 @@
      * configured in the CA. The username and password will be available in the Authorization header of the request.
      * Alternatively, is to allow only traffic that comes from Adyen servers.
      */
-    String notificationUser = "TestUser";
-    String notificationPassword = "TestPassword";
+    String notificationUser = MyConfig.WSUser;
+    String notificationPassword = MyConfig.WSPassword;
 
     string authHeader = Request.Headers["Authorization"];
 
-    if (authHeader == null)
-    {
-        throw new HttpException(401, "Unauthorized");
-    }
-    else
-    {
-        string encodedAuth = authHeader.Split(' ')[1];
-        string decodedAuth = Encoding.UTF8.GetString(Convert.FromBase64String(encodedAuth));
+    //if (authHeader == null)
+    //{
+    //    throw new HttpException(401, "Unauthorized");
+    //}
+    //else
+    //{
+    //    string encodedAuth = authHeader.Split(' ')[1];
+    //    string decodedAuth = Encoding.UTF8.GetString(Convert.FromBase64String(encodedAuth));
 
-        var requestUser = decodedAuth.Split(':')[0];
-        var requestPassword = decodedAuth.Split(':')[1];
+    //    var requestUser = decodedAuth.Split(':')[0];
+    //    var requestPassword = decodedAuth.Split(':')[1];
 
-        if (!notificationUser.Equals(requestUser) || !notificationPassword.Equals(requestPassword))
-        {
-            throw new HttpException(403, "Forbidden");
-        }
-    }
+    //    if (!notificationUser.Equals(requestUser) || !notificationPassword.Equals(requestPassword))
+    //    {
+    //        throw new HttpException(403, "Forbidden");
+    //    }
+    //}
 
     /**
      * Handle notification
