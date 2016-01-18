@@ -52,7 +52,7 @@
      */
     string merchantReference = "TEST-Hpp" + MyConfig.ShopperReference + "-" + DateTime.Now.ToString("yyyy-MM-dd-HH:mm:ss");
     string paymentAmount = "199";
-    string currencyCode = "EUR";
+    string currencyCode = "USD";
     string shipBeforeDate = DateTime.Now.AddDays(3).ToString("yyyy-MM-dd");
     string skinCode = MyConfig.SkinCode;
     string merchantAccount = MyConfig.MerchantAccount;
@@ -66,6 +66,7 @@
     string allowedMethods = "mc,visa,amex,ideal";
     string blockedMethods = "";
     string offset = "";
+    
 
     /**
      * Signing the form
